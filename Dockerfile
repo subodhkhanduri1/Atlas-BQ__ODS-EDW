@@ -9,6 +9,7 @@ WORKDIR /app
 COPY pom.xml .
 RUN mkdir -p /src/main/java/ods_edw
 COPY src/main/java/ods_edw/ODStoEDW_MoviesCDCSource.java ./src/main/java/ods_edw/ODStoEDW_MoviesCDCSource.java
+COPY META-INF ./META-INF
 
 # Download dependencies and build the JAR
 # This step also caches dependencies, so subsequent builds are faster if pom.xml doesn't change
