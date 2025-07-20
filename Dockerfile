@@ -1,5 +1,5 @@
   # Stage 1: Build the Java application
-FROM sapmachine:21-jre-ubuntu AS build
+FROM sapmachine:21-jdk-ubuntu AS build
 
 # Set working directory inside the container
 WORKDIR /app
