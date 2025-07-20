@@ -22,7 +22,7 @@ FROM sapmachine:21-jre-ubuntu
 WORKDIR /app
 
 # Copy the built JAR from the build stage
-COPY --from=build /app/target/ods_edw-1.0-SNAPSHOT.jar ods_edw.jar
+COPY --from=build /app/target/ODS-EDW-0.0.1-SNAPSHOT.jar ods_edw.jar
 
 # Command to run the application
 # This assumes your JAR is named 'ods_edw-1.0-SNAPSHOT.jar'
