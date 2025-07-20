@@ -1,5 +1,5 @@
   # Stage 1: Build the Java application
-FROM openjdk:17-jdk-slim AS build
+FROM sapmachine:21-jre-ubuntu AS build
 
 # Set working directory inside the container
 WORKDIR /app
@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y maven \
     && mvn clean package -DskipTests
 
 # Stage 2: Create the final runtime image
-FROM openjdk:17-jre-slim
+FROM sapmachine:21-jre-ubuntu
 
 # Set working directory inside the container
 WORKDIR /app
