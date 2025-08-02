@@ -21,9 +21,16 @@ import java.util.List;
 public class ODStoEDW_MoviesCDCSource {
 
     public static void main(String... args) throws Exception {
+
+        // Retrieve mongoUri from environment variable
+        String mongoUri = System.getenv("ConnectionString");
+
+        if (mongoUri == null || mongoUri.isEmpty()) {
+            throw new IllegalArgumentException("ConnectionString environment variable is not set.");
+        }
+        
         String PROJECT_ID = args[0];
         String topicId = args[1];
-        String mongoUri = args[2];
 
         MongoClient mongoClient = new MongoClient(new MongoClientURI(mongoUri));
         MongoDatabase database = mongoClient.getDatabase("sample_mflix");
