@@ -56,6 +56,14 @@
                         <mainClass>ods_edw.ODStoEDW_MoviesCDCSource</mainClass>
                     </manifest>
                 </archive>
+                <handlers>
+                    <handler implementation="org.apache.maven.plugins.assembly.filter.ContainerDescriptorResourceHandler">
+                      <targetPath>META-INF/services</targetPath>
+                      <includes>
+                        <include>META-INF/services/io.grpc.LoadBalancerProvider</include>
+                      </includes>
+                    </handler>
+                </handlers>
             </configuration>
             <executions>
                 <execution>
