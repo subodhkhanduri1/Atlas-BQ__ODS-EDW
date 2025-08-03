@@ -9,7 +9,7 @@ WORKDIR /app
 COPY pom.xml .
 RUN mkdir -p /src/main/java/ods_edw
 COPY src/main/java/ods_edw/ODStoEDW_MoviesCDCSource.java ./src/main/java/ods_edw/ODStoEDW_MoviesCDCSource.java
-COPY META-INF ./META-INF
+# COPY META-INF ./META-INF
 
 # Download dependencies and build the JAR
 # This step also caches dependencies, so subsequent builds are faster if pom.xml doesn't change
@@ -23,13 +23,12 @@ FROM sapmachine:21-jre-ubuntu
 WORKDIR /app
 
 # Copy the built JAR from the build stage
-COPY --from=build /app/target/ODS-EDW-0.0.1-SNAPSHOT.jar ods_edw.jar
+COPY --from=build /app/target/ODS-EDW-0.0.1-SNAPSHOT-jar-with-dependencies.jar ods_edw.jar
 
 # Command to run the application
-# This assumes your JAR is named 'ods_edw-1.0-SNAPSHOT.jar'
 # and the main class is 'ODStoEDW_MoviesCDCSource'
-# You will pass PROJECT_ID, TOPIC_ID, and MONGO_URI as arguments when running the container
+# You will pass PROJECT_ID, TOPIC_ID as arguments when running the container
 
 # ENTRYPOINT ["java", "-jar", "ods_edw.jar"]
 # Use CMD for arguments that can be overridden easily
-CMD ["java", "-jar", "ods_edw.jar", "${PROJECT_ID}", "${TOPIC_ID}", "${MONGO_URI}"]
+CMD ["java", "-jar", "ods_edw.jar", "${PROJECT_ID}", "${TOPIC_ID}"]
