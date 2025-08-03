@@ -24,29 +24,36 @@ public class ODStoEDW_MoviesCDCSource {
 
         // Retrieve mongoUri from environment variable
         String mongoUri = System.getenv("ConnectionString");
-
         if (mongoUri == null || mongoUri.isEmpty()) {
             throw new IllegalArgumentException("ConnectionString environment variable is not set.");
         }
         
         String PROJECT_ID = System.getenv("PROJECT_ID");
-
         if (PROJECT_ID == null || PROJECT_ID.isEmpty()) {
             throw new IllegalArgumentException("PROJECT_ID environment variable is not set.");
         }
         
         String topicId = System.getenv("TOPIC_ID");
-
         if (topicId == null || topicId.isEmpty()) {
             throw new IllegalArgumentException("TOPIC_ID environment variable is not set.");
+        }
+
+        String DATABASE = System.getenv("DATABASE");
+        if (DATABASE == null || DATABASE.isEmpty()) {
+            throw new IllegalArgumentException("DATABASE environment variable is not set.");
+        }
+
+        String COLLECTION = System.getenv("COLLECTION");
+        if (COLLECTION == null || COLLECTION.isEmpty()) {
+            throw new IllegalArgumentException("COLLECTION environment variable is not set.");
         }
 
         System.out.println("PROJECT_ID: " + PROJECT_ID);
         System.out.println("topicId: " + topicId);
 
         MongoClient mongoClient = new MongoClient(new MongoClientURI(mongoUri));
-        MongoDatabase database = mongoClient.getDatabase("sample_mflix");
-        MongoCollection<Document> collection = database.getCollection("movies");
+        MongoDatabase database = mongoClient.getDatabase(DATABASE);
+        MongoCollection<Document> collection = database.getCollection(COLLECTION);
 
         ProjectTopicName topicName = ProjectTopicName.of(PROJECT_ID, topicId);
         List<ApiFuture<String>> futures = new ArrayList<>();
