@@ -32,6 +32,9 @@ public class ODStoEDW_MoviesCDCSource {
         String PROJECT_ID = args[0];
         String topicId = args[1];
 
+        System.out.println("PROJECT_ID: " + PROJECT_ID);
+        System.out.println("topicId: " + topicId);
+
         MongoClient mongoClient = new MongoClient(new MongoClientURI(mongoUri));
         MongoDatabase database = mongoClient.getDatabase("sample_mflix");
         MongoCollection<Document> collection = database.getCollection("movies");
