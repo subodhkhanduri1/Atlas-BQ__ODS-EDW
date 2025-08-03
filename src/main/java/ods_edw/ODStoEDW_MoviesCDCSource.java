@@ -29,8 +29,17 @@ public class ODStoEDW_MoviesCDCSource {
             throw new IllegalArgumentException("ConnectionString environment variable is not set.");
         }
         
-        String PROJECT_ID = args[0];
-        String topicId = args[1];
+        String PROJECT_ID = System.getenv("PROJECT_ID");
+
+        if (PROJECT_ID == null || PROJECT_ID.isEmpty()) {
+            throw new IllegalArgumentException("PROJECT_ID environment variable is not set.");
+        }
+        
+        String topicId = System.getenv("TOPIC_ID");
+
+        if (topicId == null || topicId.isEmpty()) {
+            throw new IllegalArgumentException("TOPIC_ID environment variable is not set.");
+        }
 
         System.out.println("PROJECT_ID: " + PROJECT_ID);
         System.out.println("topicId: " + topicId);
