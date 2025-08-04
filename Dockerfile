@@ -23,7 +23,7 @@ FROM sapmachine:21-jre-ubuntu
 WORKDIR /app
 
 # Copy the built JAR from the build stage
-COPY --from=build /app/target/ODS-EDW-0.0.1-SNAPSHOT-jar-with-dependencies.jar ods_edw.jar
+COPY --from=build /app/target/ODS-EDW-0.0.1-SNAPSHOT.jar ods_edw.jar
 
 # Command to run the application
 # and the main class is 'ODStoEDW_MoviesCDCSource'
@@ -31,4 +31,4 @@ COPY --from=build /app/target/ODS-EDW-0.0.1-SNAPSHOT-jar-with-dependencies.jar o
 
 # ENTRYPOINT ["java", "-jar", "ods_edw.jar"]
 # Use CMD for arguments that can be overridden easily
-CMD ["java", "-jar", "ods_edw.jar", "${PROJECT_ID}", "${TOPIC_ID}"]
+CMD ["java", "-jar", "ods_edw.jar"]
