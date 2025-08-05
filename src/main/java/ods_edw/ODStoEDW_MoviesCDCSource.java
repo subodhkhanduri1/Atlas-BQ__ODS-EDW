@@ -66,7 +66,7 @@ public class ODStoEDW_MoviesCDCSource {
         Document resumeTokenDoc = resumeTokenCollection.find(new Document("_id", RESUME_TOKEN_DOCUMENT_ID)).first();
         org.bson.BsonDocument resumeToken = null;
         if (resumeTokenDoc != null && resumeTokenDoc.containsKey("token")) {
-            resumeToken = resumeTokenDoc.get("token", org.bson.BsonDocument.class);
+            resumeToken = resumeTokenDoc.get("token", org.bson.Document.class);
             System.out.println("Found resume token: " + resumeToken);
         }
 
