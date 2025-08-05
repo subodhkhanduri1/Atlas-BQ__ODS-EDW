@@ -13,12 +13,16 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.OperationType;
 import com.mongodb.client.model.changestream.FullDocument;
+import com.mongodb.client.model.UpdateOptions;
 import org.bson.Document;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class ODStoEDW_MoviesCDCSource {
+
+    private static final String RESUME_TOKEN_COLLECTION = "resume_tokens";
+    private static final String RESUME_TOKEN_DOCUMENT_ID = "movies_cdc_resume_token";
 
     public static void main(String... args) throws Exception {
 
@@ -27,12 +31,12 @@ public class ODStoEDW_MoviesCDCSource {
         if (mongoUri == null || mongoUri.isEmpty()) {
             throw new IllegalArgumentException("ConnectionString environment variable is not set.");
         }
-        
+
         String PROJECT_ID = System.getenv("PROJECT_ID");
         if (PROJECT_ID == null || PROJECT_ID.isEmpty()) {
             throw new IllegalArgumentException("PROJECT_ID environment variable is not set.");
         }
-        
+
         String topicId = System.getenv("TOPIC_ID");
         if (topicId == null || topicId.isEmpty()) {
             throw new IllegalArgumentException("TOPIC_ID environment variable is not set.");
@@ -55,6 +59,17 @@ public class ODStoEDW_MoviesCDCSource {
         MongoDatabase database = mongoClient.getDatabase(DATABASE);
         MongoCollection<Document> collection = database.getCollection(COLLECTION);
 
+        // Resume token collection
+        MongoCollection<Document> resumeTokenCollection = database.getCollection(RESUME_TOKEN_COLLECTION);
+
+        // Try to retrieve the resume token from the collection
+        Document resumeTokenDoc = resumeTokenCollection.find(new Document("_id", RESUME_TOKEN_DOCUMENT_ID)).first();
+        org.bson.BsonDocument resumeToken = null;
+        if (resumeTokenDoc != null && resumeTokenDoc.containsKey("token")) {
+            resumeToken = resumeTokenDoc.get("token", org.bson.BsonDocument.class);
+            System.out.println("Found resume token: " + resumeToken);
+        }
+
         ProjectTopicName topicName = ProjectTopicName.of(PROJECT_ID, topicId);
         List<ApiFuture<String>> futures = new ArrayList<>();
         final Publisher publisher = Publisher.newBuilder(topicName).build();
@@ -68,14 +83,9 @@ public class ODStoEDW_MoviesCDCSource {
                 // Determine the operation type and construct the message accordingly
                 if (changeStreamDocument.getOperationType() == OperationType.UPDATE) {
                     System.out.println("Update operation detected for document ID: " + changeStreamDocument.getDocumentKey());
-                    // For updates, you might want to send the updated fields (updateDescription)
-                    // along with the full document, or just the full document after the update.
-                    // Here, we'll send the full document for simplicity, but you could customize.
                     if (changeStreamDocument.getFullDocument() != null) {
                         messageData = changeStreamDocument.getFullDocument().toJson();
                     } else {
-                        // If full document is not available for update (e.g., if configured not to send it)
-                        // you might want to send the updated fields from getUpdateDescription()
                         messageData = "{\"_id\":" + changeStreamDocument.getDocumentKey().toJson() + ", \"operationType\":\"UPDATE\", \"updatedFields\":" + changeStreamDocument.getUpdateDescription().getUpdatedFields().toJson() + "}";
                         return;
                     }
@@ -85,14 +95,12 @@ public class ODStoEDW_MoviesCDCSource {
                     messageData = changeStreamDocument.getFullDocument().toJson();
                 } else if (changeStreamDocument.getOperationType() == OperationType.DELETE) {
                     System.out.println("Delete operation detected for document ID: " + changeStreamDocument.getDocumentKey());
-                    // For deletes, getFullDocument() will be null, so send the document key.
                     messageData = "{\"_id\":" + changeStreamDocument.getDocumentKey().toJson() + ", \"operationType\":\"DELETE\"}";
                     System.out.println("Publishing message: " + messageData);
                     return;
                 } else {
-                    // For other operation types like DROP, RENAME, etc.
                     System.out.println("Other operation detected: " + changeStreamDocument.getOperationType());
-                    messageData = changeStreamDocument.toString(); // Send the entire change stream document as a string
+                    messageData = changeStreamDocument.toString();
                     return;
                 }
 
@@ -102,23 +110,33 @@ public class ODStoEDW_MoviesCDCSource {
                     PubsubMessage pubsubMessage = PubsubMessage.newBuilder()
                             .setData(data)
                             .build();
-                    // Schedule a message to be published. Messages are automatically batched.
                     ApiFuture<String> future = publisher.publish(pubsubMessage);
                     futures.add(future);
+
+                    // Save the resume token after processing each event
+                    org.bson.BsonDocument token = changeStreamDocument.getResumeToken();
+                    if (token != null) {
+                        Document tokenDoc = new Document("_id", RESUME_TOKEN_DOCUMENT_ID)
+                                .append("token", token);
+                        resumeTokenCollection.replaceOne(
+                                new Document("_id", RESUME_TOKEN_DOCUMENT_ID),
+                                tokenDoc,
+                                new com.mongodb.client.model.UpdateOptions().upsert(true)
+                        );
+                    }
                 } catch (Exception e) {
                     e.printStackTrace();
-                } finally {
-
                 }
             }
         };
 
-        /**
-         * Change stream listener
-         */
-        collection.watch()
-            .fullDocument(FullDocument.UPDATE_LOOKUP)
-            .forEach(printBlock);
+        // Build the change stream iterable with or without resume token
+        com.mongodb.client.ChangeStreamIterable<Document> changeStreamIterable;
+        changeStreamIterable = collection.watch().fullDocument(FullDocument.UPDATE_LOOKUP);
+        if (resumeToken != null) {
+            changeStreamIterable = changeStreamIterable.resumeAfter(resumeToken);
+        }
 
+        changeStreamIterable.forEach(printBlock);
     }
 }
