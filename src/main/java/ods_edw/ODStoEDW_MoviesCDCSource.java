@@ -22,7 +22,6 @@ import java.util.List;
 public class ODStoEDW_MoviesCDCSource {
 
     private static final String RESUME_TOKEN_COLLECTION = "resume_tokens";
-    private static final String RESUME_TOKEN_DOCUMENT_ID = "movies_cdc_resume_token";
 
     public static void main(String... args) throws Exception {
 
@@ -52,6 +51,8 @@ public class ODStoEDW_MoviesCDCSource {
             throw new IllegalArgumentException("COLLECTION environment variable is not set.");
         }
 
+        final Integer RESUME_INTERVAL_SECONDS = getResumeIntervalSeconds(300);
+
         System.out.println("PROJECT_ID: " + PROJECT_ID);
         System.out.println("topicId: " + topicId);
 
@@ -61,13 +62,19 @@ public class ODStoEDW_MoviesCDCSource {
 
         // Resume token collection
         MongoCollection<Document> resumeTokenCollection = database.getCollection(RESUME_TOKEN_COLLECTION);
+        final String RESUME_TOKEN_ID = COLLECTION;
 
         // Try to retrieve the resume token from the collection
-        Document resumeTokenDoc = resumeTokenCollection.find(new Document("_id", RESUME_TOKEN_DOCUMENT_ID)).first();
+        Document resumeTokenDoc = resumeTokenCollection.find(new Document("_id", RESUME_TOKEN_ID)).first();
         org.bson.BsonDocument resumeToken = null;
+        // Use a mutable holder object for resumeTokenTimestamp
+        final Long[] resumeTokenTimestamp = new Long[] { null };
+
         if (resumeTokenDoc != null && resumeTokenDoc.containsKey("token")) {
             resumeToken = org.bson.BsonDocument.parse(resumeTokenDoc.get("token", Document.class).toJson());
+            resumeTokenTimestamp[0] = resumeTokenDoc.getLong("_ts");
             System.out.println("Found resume token: " + resumeToken);
+            System.out.println("Resume token timestamp: " + resumeTokenTimestamp);
         }
 
         ProjectTopicName topicName = ProjectTopicName.of(PROJECT_ID, topicId);
@@ -114,18 +121,36 @@ public class ODStoEDW_MoviesCDCSource {
                     futures.add(future);
 
                     // Save the resume token after processing each event
+                    
                     org.bson.BsonDocument token = changeStreamDocument.getResumeToken();
                     if (token != null) {
-                        Document tokenDoc = new Document("_id", RESUME_TOKEN_DOCUMENT_ID)
-                                .append("token", token);
-                        resumeTokenCollection.replaceOne(
-                                new Document("_id", RESUME_TOKEN_DOCUMENT_ID),
+                        Long now = System.currentTimeMillis();
+                        Document tokenDoc = null;
+                        
+                        synchronized(resumeTokenTimestamp) {
+                        // Only update if previous timestamp is null or behind by RESUME_INTERVAL_SECONDS
+                            if (resumeTokenTimestamp[0] == null || now - resumeTokenTimestamp[0] > RESUME_INTERVAL_SECONDS * 1000) {
+                                tokenDoc = new Document("_id", RESUME_TOKEN_ID)
+                                        .append("token", token)
+                                        .append("_ts", now);
+
+                                resumeTokenTimestamp[0] = now;
+                            }
+                        }
+
+                        if(tokenDoc != null) {
+                            resumeTokenCollection.replaceOne(
+                                new Document("_id", RESUME_TOKEN_ID),
                                 tokenDoc,
                                 new com.mongodb.client.model.UpdateOptions().upsert(true)
-                        );
+                            );
+                            System.out.println("Updated resume token at:" + now);
+                        }
                     }
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    System.out.println("Error publishing message: " + e.getMessage());
+                    System.out.println(e);
+                    e.printStackTrace(System.out);
                 }
             }
         };
@@ -138,5 +163,15 @@ public class ODStoEDW_MoviesCDCSource {
         }
 
         changeStreamIterable.forEach(printBlock);
+    }
+
+    private static int getResumeIntervalSeconds(int defaultValue) {
+        Integer val = Integer.valueOf(System.getenv("RESUME_INTERVAL_SECONDS"));
+        if (val == null || val == 0) {
+            System.out.println("RESUME_INTERVAL_SECONDS environment variable is not set. Defaulting to 300 seconds.");
+            return defaultValue;
+        }
+        
+        return val;
     }
 }
