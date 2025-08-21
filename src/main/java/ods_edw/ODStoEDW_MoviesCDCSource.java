@@ -144,7 +144,7 @@ public class ODStoEDW_MoviesCDCSource {
                                 tokenDoc,
                                 new com.mongodb.client.model.UpdateOptions().upsert(true)
                             );
-                            System.out.println("Updated resume token at: " + now);
+                            System.out.println("Updated resume token at:" + now);
                         }
                     }
                 } catch (Exception e) {
@@ -166,6 +166,10 @@ public class ODStoEDW_MoviesCDCSource {
     }
 
     private static int getResumeIntervalSeconds(int defaultValue) {
+        if(System.getenv("RESUME_INTERVAL_SECONDS") == null) {
+            return defaultValue;
+        }
+        
         Integer val = Integer.valueOf(System.getenv("RESUME_INTERVAL_SECONDS"));
         if (val == null || val == 0) {
             System.out.println("RESUME_INTERVAL_SECONDS environment variable is not set. Defaulting to 300 seconds.");
