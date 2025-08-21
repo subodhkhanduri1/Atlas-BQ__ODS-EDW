@@ -144,7 +144,7 @@ public class ODStoEDW_MoviesCDCSource {
                                 tokenDoc,
                                 new com.mongodb.client.model.UpdateOptions().upsert(true)
                             );
-                            System.out.println("Updated resume token at:" + now);
+                            System.out.println("Updated resume token at: " + now);
                         }
                     }
                 } catch (Exception e) {
